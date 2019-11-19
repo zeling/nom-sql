@@ -319,9 +319,9 @@ named!(simple_expr<CompleteByteSlice, ConditionExpression>,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arithmetic::{ArithmeticBase, ArithmeticOperator};
     use column::Column;
     use common::{FieldDefinitionExpression, Literal, Operator};
-    use arithmetic::{ArithmeticBase, ArithmeticOperator};
 
     fn columns(cols: &[&str]) -> Vec<FieldDefinitionExpression> {
         cols.iter()
@@ -377,15 +377,12 @@ mod tests {
     }
 
     fn x_operator_value(op: ArithmeticOperator, value: Literal) -> ConditionExpression {
-        ConditionExpression::Arithmetic(
-            Box::new(ArithmeticExpression::new(
-                op,
-                ArithmeticBase::Column(Column::from("x")),
-                ArithmeticBase::Scalar(value),
-                None
-                )
-            )
-        )
+        ConditionExpression::Arithmetic(Box::new(ArithmeticExpression::new(
+            op,
+            ArithmeticBase::Column(Column::from("x")),
+            ArithmeticBase::Scalar(value),
+            None,
+        )))
     }
     #[test]
     fn simple_arithmetic_expression() {
@@ -405,9 +402,10 @@ mod tests {
         let res = simple_expr(CompleteByteSlice(cond.as_bytes()));
         assert_eq!(
             res.unwrap().1,
-            ConditionExpression::Bracketed(Box::new(
-                x_operator_value(ArithmeticOperator::Subtract, 2.into())
-            ))
+            ConditionExpression::Bracketed(Box::new(x_operator_value(
+                ArithmeticOperator::Subtract,
+                2.into()
+            )))
         );
     }
 
@@ -418,9 +416,10 @@ mod tests {
         let res = parenthetical_expr(CompleteByteSlice(cond.as_bytes()));
         assert_eq!(
             res.unwrap().1,
-            ConditionExpression::Bracketed(Box::new(
-                x_operator_value(ArithmeticOperator::Multiply, 5.into())
-            ))
+            ConditionExpression::Bracketed(Box::new(x_operator_value(
+                ArithmeticOperator::Multiply,
+                5.into()
+            )))
         );
     }
 
@@ -433,12 +432,8 @@ mod tests {
             res.unwrap().1,
             ConditionExpression::ComparisonOp(ConditionTree {
                 operator: Operator::Equal,
-                left: Box::new(
-                    x_operator_value(ArithmeticOperator::Multiply, 3.into())
-                ),
-                right: Box::new(
-                    ConditionExpression::Base(ConditionBase::Literal(21.into()))
-                )
+                left: Box::new(x_operator_value(ArithmeticOperator::Multiply, 3.into())),
+                right: Box::new(ConditionExpression::Base(ConditionBase::Literal(21.into())))
             })
         );
     }
@@ -449,17 +444,13 @@ mod tests {
         let res = condition_expr(CompleteByteSlice(cond.as_bytes()));
         assert_eq!(
             res.unwrap().1,
-            ConditionExpression::Bracketed(Box::new(
-                ConditionExpression::ComparisonOp(ConditionTree {
+            ConditionExpression::Bracketed(Box::new(ConditionExpression::ComparisonOp(
+                ConditionTree {
                     operator: Operator::Equal,
-                    left: Box::new(
-                        x_operator_value(ArithmeticOperator::Subtract, 7.into())
-                    ),
-                    right: Box::new(
-                        ConditionExpression::Base(ConditionBase::Literal(15.into()))
-                    )
-                })
-            ))
+                    left: Box::new(x_operator_value(ArithmeticOperator::Subtract, 7.into())),
+                    right: Box::new(ConditionExpression::Base(ConditionBase::Literal(15.into())))
+                }
+            )))
         );
     }
 
@@ -472,14 +463,11 @@ mod tests {
             res.unwrap().1,
             ConditionExpression::ComparisonOp(ConditionTree {
                 operator: Operator::Equal,
-                left: Box::new(
-                    ConditionExpression::Bracketed(Box::new(
-                        x_operator_value(ArithmeticOperator::Add, 2.into())
-                    ))
-                ),
-                right: Box::new(
-                    ConditionExpression::Base(ConditionBase::Literal(15.into()))
-                )
+                left: Box::new(ConditionExpression::Bracketed(Box::new(x_operator_value(
+                    ArithmeticOperator::Add,
+                    2.into()
+                )))),
+                right: Box::new(ConditionExpression::Base(ConditionBase::Literal(15.into())))
             })
         );
     }
@@ -493,21 +481,17 @@ mod tests {
             res.unwrap().1,
             ConditionExpression::ComparisonOp(ConditionTree {
                 operator: Operator::Equal,
-                left: Box::new(
-                    ConditionExpression::Bracketed(Box::new(
-                        x_operator_value(ArithmeticOperator::Add, 2.into())
-                    ))
-                ),
-                right: Box::new(
-                    ConditionExpression::Bracketed(Box::new(
-                        x_operator_value(ArithmeticOperator::Multiply, 3.into())
-                    ))
-                )
+                left: Box::new(ConditionExpression::Bracketed(Box::new(x_operator_value(
+                    ArithmeticOperator::Add,
+                    2.into()
+                )))),
+                right: Box::new(ConditionExpression::Bracketed(Box::new(x_operator_value(
+                    ArithmeticOperator::Multiply,
+                    3.into()
+                ))))
             })
         );
     }
-
-
 
     #[test]
     fn equality_literals() {

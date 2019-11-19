@@ -1,17 +1,16 @@
-use nom::{digit, multispace};
 use nom::types::CompleteByteSlice;
+use nom::{digit, multispace};
 use std::fmt;
 use std::str;
 use std::str::FromStr;
 
-use create_table_options::table_options;
 use column::{Column, ColumnConstraint, ColumnSpecification};
 use common::{
     column_identifier_no_alias, opt_multispace, parse_comment, sql_identifier,
-    statement_terminator, table_reference, type_identifier, Literal, Real, SqlType,
-    TableKey,
+    statement_terminator, table_reference, type_identifier, Literal, Real, SqlType, TableKey,
 };
 use compound_select::{compound_selection, CompoundSelectStatement};
+use create_table_options::table_options;
 use keywords::escape_if_keyword;
 use order::{order_type, OrderType};
 use select::{nested_selection, SelectStatement};
@@ -22,6 +21,7 @@ pub struct CreateTableStatement {
     pub table: Table,
     pub fields: Vec<ColumnSpecification>,
     pub keys: Option<Vec<TableKey>>,
+    pub gdpr_undeletable: bool,
 }
 
 impl fmt::Display for CreateTableStatement {
@@ -340,6 +340,10 @@ named!(pub creation<CompleteByteSlice, CreateTableStatement>,
         tag!(")") >>
         opt_multispace >>
         table_options >>
+        opt_multispace >>
+        gdpr_undeletable: do_parse!(
+            postfix: opt!(tag_no_case!("UNDELETABLE")) >> (postfix.is_some())
+        ) >>
         statement_terminator >>
         ({
             // "table AS alias" isn't legal in CREATE statements
@@ -395,6 +399,7 @@ named!(pub creation<CompleteByteSlice, CreateTableStatement>,
                 table: table,
                 fields: named_fields,
                 keys: named_keys,
+                gdpr_undeletable,
             }
         })
     )
@@ -494,9 +499,10 @@ mod tests {
             res.unwrap().1,
             CreateTableStatement {
                 table: Table::from("t"),
-                fields: vec![
-                    ColumnSpecification::new(Column::from("t.x"), SqlType::Int(32)),
-                ],
+                fields: vec![ColumnSpecification::new(
+                    Column::from("t.x"),
+                    SqlType::Int(32)
+                ),],
                 ..Default::default()
             }
         );
@@ -627,7 +633,7 @@ mod tests {
                 keys: Some(vec![TableKey::UniqueKey(
                     Some(String::from("id_k")),
                     vec![Column::from("users.id")],
-                ), ]),
+                ),]),
                 ..Default::default()
             }
         );
@@ -872,7 +878,17 @@ mod tests {
                         vec![Column::from("comments.user_id")]
                     ),
                 ]),
+                gdpr_undeletable: false,
             }
         );
+    }
+
+    #[test]
+    fn gdpr_undeletable() {
+        let qstring = "CREATE TABLE `auth_group` (
+                       `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,
+                       `name` varchar(80) NOT NULL UNIQUE) UNDELETABLE;";
+        let res = creation(CompleteByteSlice(qstring.as_bytes())).unwrap();
+        assert!(res.1.gdpr_undeletable);
     }
 }

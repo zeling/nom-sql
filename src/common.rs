@@ -1,9 +1,9 @@
 use nom::types::CompleteByteSlice;
 use nom::{alphanumeric, digit, is_alphanumeric, line_ending, multispace, IResult};
 use std::fmt::{self, Display};
+use std::ops::Deref;
 use std::str;
 use std::str::FromStr;
-use std::ops::Deref;
 
 use arithmetic::{arithmetic_expression, ArithmeticExpression};
 use column::{Column, FunctionExpression};
@@ -918,23 +918,21 @@ fn raw_string_quoted(input: CompleteByteSlice, quote: u8) -> IResult<CompleteByt
     let quote_slice: &[u8] = &[quote];
     let double_quote_slice: &[u8] = &[quote, quote];
     let backslash_quote: &[u8] = &[b'\\', quote];
-    delimited!(input,
+    delimited!(
+        input,
         tag!(quote_slice),
         fold_many0!(
             alt!(
-                is_not!(backslash_quote) |
-                map!(tag!(double_quote_slice), |_| CompleteByteSlice(quote_slice)) |
-                map!(tag!("\\\\"), |_| CompleteByteSlice(&b"\\"[..])) |
-                map!(tag!("\\b"), |_| CompleteByteSlice(&b"\x7f"[..])) |
-                map!(tag!("\\r"), |_| CompleteByteSlice(&b"\r"[..])) |
-                map!(tag!("\\n"), |_| CompleteByteSlice(&b"\n"[..])) |
-                map!(tag!("\\t"), |_| CompleteByteSlice(&b"\t"[..])) |
-                map!(tag!("\\0"), |_| CompleteByteSlice(&b"\0"[..])) |
-                map!(tag!("\\Z"), |_| CompleteByteSlice(&b"\x1A"[..])) |
-                do_parse!(
-                        _escape: tag!("\\") >>
-                        escaped: take!(1) >>
-                        (escaped ))
+                is_not!(backslash_quote)
+                    | map!(tag!(double_quote_slice), |_| CompleteByteSlice(quote_slice))
+                    | map!(tag!("\\\\"), |_| CompleteByteSlice(&b"\\"[..]))
+                    | map!(tag!("\\b"), |_| CompleteByteSlice(&b"\x7f"[..]))
+                    | map!(tag!("\\r"), |_| CompleteByteSlice(&b"\r"[..]))
+                    | map!(tag!("\\n"), |_| CompleteByteSlice(&b"\n"[..]))
+                    | map!(tag!("\\t"), |_| CompleteByteSlice(&b"\t"[..]))
+                    | map!(tag!("\\0"), |_| CompleteByteSlice(&b"\0"[..]))
+                    | map!(tag!("\\Z"), |_| CompleteByteSlice(&b"\x1A"[..]))
+                    | do_parse!(_escape: tag!("\\") >> escaped: take!(1) >> (escaped))
             ),
             Vec::new(),
             |mut acc: Vec<u8>, bytes: CompleteByteSlice| {

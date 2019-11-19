@@ -55,7 +55,9 @@ named!(pub sql_query<CompleteByteSlice, SqlQuery>,
 );
 
 pub fn parse_query_bytes<T>(input: T) -> Result<SqlQuery, &'static str>
-    where T: AsRef<[u8]> {
+where
+    T: AsRef<[u8]>,
+{
     match sql_query(CompleteByteSlice(input.as_ref())) {
         Ok((_, o)) => Ok(o),
         Err(_) => Err("failed to parse query"),
@@ -63,7 +65,9 @@ pub fn parse_query_bytes<T>(input: T) -> Result<SqlQuery, &'static str>
 }
 
 pub fn parse_query<T>(input: T) -> Result<SqlQuery, &'static str>
-    where T: AsRef<str> {
+where
+    T: AsRef<str>,
+{
     parse_query_bytes(input.as_ref().trim().as_bytes())
 }
 

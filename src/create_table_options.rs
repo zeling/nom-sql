@@ -1,9 +1,7 @@
-use nom::{alphanumeric, multispace};
 use nom::types::CompleteByteSlice;
+use nom::{alphanumeric, multispace};
 
-use common::{
-    integer_literal, opt_multispace, sql_identifier, string_literal,
-};
+use common::{integer_literal, opt_multispace, sql_identifier, string_literal};
 
 named!(pub table_options<CompleteByteSlice, ()>, do_parse!(
        separated_list!(table_options_separator, create_option)
@@ -194,8 +192,10 @@ mod tests {
 
     #[test]
     fn create_table_option_list() {
-        should_parse_all("ENGINE=InnoDB AUTO_INCREMENT=44782967 \
-        DEFAULT CHARSET=binary ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=8");
+        should_parse_all(
+            "ENGINE=InnoDB AUTO_INCREMENT=44782967 \
+             DEFAULT CHARSET=binary ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=8",
+        );
     }
 
     #[test]
