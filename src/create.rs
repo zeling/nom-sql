@@ -22,6 +22,7 @@ pub struct CreateTableStatement {
     pub fields: Vec<ColumnSpecification>,
     pub keys: Option<Vec<TableKey>>,
     pub gdpr_undeletable: bool,
+    pub gdpr_user_column: Option<String>,
 }
 
 impl fmt::Display for CreateTableStatement {
@@ -344,6 +345,9 @@ named!(pub creation<CompleteByteSlice, CreateTableStatement>,
         gdpr_undeletable: do_parse!(
             postfix: opt!(tag_no_case!("UNDELETABLE")) >> (postfix.is_some())
         ) >>
+        gdpr_user_column: opt!(do_parse!(
+            tag_no_case!("USER_COLUMN") >> opt_multispace >> tag!("=") >> opt_multispace >> col: sql_identifier >> (str::from_utf8(*col).unwrap().into())
+        )) >>
         statement_terminator >>
         ({
             // "table AS alias" isn't legal in CREATE statements
@@ -400,6 +404,7 @@ named!(pub creation<CompleteByteSlice, CreateTableStatement>,
                 fields: named_fields,
                 keys: named_keys,
                 gdpr_undeletable,
+                gdpr_user_column,
             }
         })
     )
@@ -879,6 +884,7 @@ mod tests {
                     ),
                 ]),
                 gdpr_undeletable: false,
+                gdpr_user_column: None,
             }
         );
     }
@@ -890,5 +896,14 @@ mod tests {
                        `name` varchar(80) NOT NULL UNIQUE) UNDELETABLE;";
         let res = creation(CompleteByteSlice(qstring.as_bytes())).unwrap();
         assert!(res.1.gdpr_undeletable);
+    }
+
+    #[test]
+    fn gdpr_user_column() {
+        let qstring = "CREATE TABLE `auth_group` (
+                       `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,
+                       `name` varchar(80) NOT NULL UNIQUE) USER_COLUMN = id;";
+        let res = creation(CompleteByteSlice(qstring.as_bytes())).unwrap();
+        assert_eq!(res.1.gdpr_user_column, Some("id".into()));
     }
 }
