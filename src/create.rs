@@ -345,6 +345,7 @@ named!(pub creation<CompleteByteSlice, CreateTableStatement>,
         gdpr_undeletable: do_parse!(
             postfix: opt!(tag_no_case!("UNDELETABLE")) >> (postfix.is_some())
         ) >>
+        opt_multispace>>
         gdpr_user_column: opt!(do_parse!(
             tag_no_case!("USER_COLUMN") >> opt_multispace >> tag!("=") >> opt_multispace >> col: sql_identifier >> (str::from_utf8(*col).unwrap().into())
         )) >>
@@ -905,5 +906,15 @@ mod tests {
                        `name` varchar(80) NOT NULL UNIQUE) USER_COLUMN = id;";
         let res = creation(CompleteByteSlice(qstring.as_bytes())).unwrap();
         assert_eq!(res.1.gdpr_user_column, Some("id".into()));
+    }
+
+    #[test]
+    fn gdpr_undeletable_user_column() {
+        let qstring = "CREATE TABLE `auth_group` (
+                       `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,
+                       `name` varchar(80) NOT NULL UNIQUE) UNDELETABLE USER_COLUMN = id;";
+        let res = creation(CompleteByteSlice(qstring.as_bytes())).unwrap();
+        assert_eq!(res.1.gdpr_user_column, Some("id".into()));
+        assert!(res.1.gdpr_undeletable);
     }
 }
